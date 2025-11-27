@@ -20,6 +20,10 @@ export const viewport: Viewport = {
   ],
 };
 
+// Domain verification codes (set via environment variables)
+const GOOGLE_SITE_VERIFICATION = process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION || "";
+const FACEBOOK_DOMAIN_VERIFICATION = process.env.NEXT_PUBLIC_FACEBOOK_DOMAIN_VERIFICATION || "";
+
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: {
@@ -51,6 +55,13 @@ export const metadata: Metadata = {
     email: false,
     address: false,
     telephone: false,
+  },
+  // Domain verification for Google Search Console and Facebook Business
+  verification: {
+    google: GOOGLE_SITE_VERIFICATION || undefined,
+    other: FACEBOOK_DOMAIN_VERIFICATION ? {
+      "facebook-domain-verification": FACEBOOK_DOMAIN_VERIFICATION,
+    } : undefined,
   },
   alternates: {
     canonical: siteUrl,

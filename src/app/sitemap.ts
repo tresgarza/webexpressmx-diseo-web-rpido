@@ -6,18 +6,21 @@ export default function sitemap(): MetadataRoute.Sitemap {
   const currentDate = new Date().toISOString();
 
   return [
+    // Main landing page - highest priority
     {
       url: siteUrl,
       lastModified: currentDate,
       changeFrequency: "weekly",
       priority: 1,
     },
+    // Quote wizard - high priority (main conversion page)
     {
-      url: `${siteUrl}/gracias`,
+      url: `${siteUrl}/cotizaciones`,
       lastModified: currentDate,
-      changeFrequency: "monthly",
-      priority: 0.5,
+      changeFrequency: "weekly",
+      priority: 0.9,
     },
+    // Legal pages
     {
       url: `${siteUrl}/privacidad`,
       lastModified: currentDate,
@@ -30,6 +33,9 @@ export default function sitemap(): MetadataRoute.Sitemap {
       changeFrequency: "monthly",
       priority: 0.3,
     },
+    // Note: /gracias and /admin-express are intentionally excluded
+    // - /gracias is a thank-you page (not useful for search)
+    // - /admin-express is an admin page (should not be indexed)
   ];
 }
 

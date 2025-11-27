@@ -1,11 +1,72 @@
 "use client";
 
+import { trackGoogleAdsConversion, trackGoogleAdsConversionWithUserData, setGoogleEnhancedConversionsData } from "@/components/GoogleAnalytics";
+import { setFBAdvancedMatchingData } from "@/components/FacebookPixel";
+
 // Extend window type for tracking
 declare global {
   interface Window {
     dataLayer: unknown[];
     fbq: (...args: unknown[]) => void;
     gtag: (...args: unknown[]) => void;
+  }
+}
+
+// Generate unique event ID for deduplication (Facebook CAPI)
+export function generateEventId(): string {
+  return `${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
+}
+
+// Get Facebook cookies for better attribution
+function getFacebookCookies(): { fbc?: string; fbp?: string } {
+  if (typeof document === "undefined") return {};
+  
+  const cookies = document.cookie.split(";").reduce((acc, cookie) => {
+    const [key, value] = cookie.trim().split("=");
+    acc[key] = value;
+    return acc;
+  }, {} as Record<string, string>);
+
+  return {
+    fbc: cookies._fbc,
+    fbp: cookies._fbp,
+  };
+}
+
+// Send event to Facebook Conversion API (server-side)
+async function sendToFacebookCAPI(eventData: {
+  eventName: string;
+  eventId: string;
+  email?: string;
+  phone?: string;
+  firstName?: string;
+  lastName?: string;
+  value?: number;
+  currency?: string;
+  contentName?: string;
+  contentCategory?: string;
+  contentIds?: string[];
+}) {
+  try {
+    const fbCookies = getFacebookCookies();
+    
+    const response = await fetch("/api/facebook-conversion", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        ...eventData,
+        eventSourceUrl: typeof window !== "undefined" ? window.location.href : undefined,
+        ...fbCookies,
+      }),
+    });
+
+    if (!response.ok) {
+      console.warn("Facebook CAPI: Failed to send event", await response.text());
+    }
+  } catch (error) {
+    console.warn("Facebook CAPI: Error sending event", error);
   }
 }
 
@@ -87,21 +148,33 @@ export function trackPageView(pagePath?: string, pageTitle?: string) {
 // Track when user starts the quote wizard
 export function trackQuoteStart(planId?: string, planName?: string) {
   const utmParams = getStoredUTMParams();
+  const eventId = generateEventId();
 
   // GTM
   pushToDataLayer("quote_start", {
     plan_id: planId,
     plan_name: planName,
+    event_id: eventId,
     ...utmParams,
   });
 
-  // Facebook Pixel - InitiateCheckout
+  // Facebook Pixel - InitiateCheckout (with event_id for deduplication)
   if (typeof window !== "undefined" && window.fbq) {
     window.fbq("track", "InitiateCheckout", {
       content_name: planName || "Quote Wizard",
       content_category: "Web Design Service",
+      eventID: eventId,
     });
   }
+
+  // Facebook Conversion API (server-side)
+  sendToFacebookCAPI({
+    eventName: "InitiateCheckout",
+    eventId,
+    contentName: planName || "Quote Wizard",
+    contentCategory: "Web Design Service",
+    contentIds: planId ? [planId] : undefined,
+  });
 }
 
 // Track when user selects a plan
@@ -150,6 +223,8 @@ export function trackLeadConversion(data: {
   totalValue?: number;
 }) {
   const utmParams = getStoredUTMParams();
+  const eventId = generateEventId();
+  const transactionId = `lead_${Date.now()}`;
 
   // GTM - Main conversion event
   pushToDataLayer("generate_lead", {
@@ -160,12 +235,13 @@ export function trackLeadConversion(data: {
     email: data.email,
     phone: data.phone,
     addons: data.addons,
+    event_id: eventId,
     ...utmParams,
   });
 
   // Also push as purchase event for easier conversion tracking
   pushToDataLayer("purchase", {
-    transaction_id: `lead_${Date.now()}`,
+    transaction_id: transactionId,
     value: data.totalValue || data.planPrice,
     currency: "MXN",
     items: [
@@ -178,13 +254,14 @@ export function trackLeadConversion(data: {
     ],
   });
 
-  // Facebook Pixel - Lead event
+  // Facebook Pixel - Lead event (with event_id for deduplication)
   if (typeof window !== "undefined" && window.fbq) {
     window.fbq("track", "Lead", {
       content_name: data.planName,
       content_category: "Web Design Service",
       value: data.totalValue || data.planPrice,
       currency: "MXN",
+      eventID: eventId,
     });
 
     // Also track as CompleteRegistration for funnel tracking
@@ -195,6 +272,19 @@ export function trackLeadConversion(data: {
     });
   }
 
+  // Facebook Conversion API (server-side) - for better attribution
+  sendToFacebookCAPI({
+    eventName: "Lead",
+    eventId,
+    email: data.email,
+    phone: data.phone,
+    value: data.totalValue || data.planPrice,
+    currency: "MXN",
+    contentName: data.planName,
+    contentCategory: "Web Design Service",
+    contentIds: data.planId ? [data.planId] : undefined,
+  });
+
   // Google Analytics 4 - Track conversion event
   if (typeof window !== "undefined" && window.gtag) {
     window.gtag("event", "generate_lead", {
@@ -204,6 +294,32 @@ export function trackLeadConversion(data: {
       plan_id: data.planId,
     });
   }
+
+  // Set user data for Enhanced Matching/Conversions
+  const userData = {
+    email: data.email,
+    phone: data.phone,
+  };
+
+  // Facebook Advanced Matching
+  if (data.email || data.phone) {
+    setFBAdvancedMatchingData(userData);
+  }
+
+  // Google Enhanced Conversions
+  if (data.email || data.phone) {
+    setGoogleEnhancedConversionsData(userData);
+  }
+
+  // Google Ads Conversion Tracking with Enhanced Conversions
+  trackGoogleAdsConversionWithUserData(
+    {
+      value: data.totalValue || data.planPrice,
+      currency: "MXN",
+      transactionId,
+    },
+    userData
+  );
 }
 
 // Track thank you page view (for conversion tracking)

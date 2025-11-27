@@ -16,6 +16,17 @@ function getCookieConsent() {
   }
 }
 
+// Get stored user data for Advanced Matching
+function getStoredUserData(): { em?: string; ph?: string; fn?: string } | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const stored = localStorage.getItem("fb_user_data");
+    return stored ? JSON.parse(stored) : null;
+  } catch {
+    return null;
+  }
+}
+
 // Extend window type for Facebook Pixel
 declare global {
   interface Window {
@@ -111,5 +122,84 @@ export function trackFBCustomEvent(eventName: string, params?: Record<string, un
   if (typeof window !== "undefined" && window.fbq) {
     window.fbq("trackCustom", eventName, params);
   }
+}
+
+// Hash function for Advanced Matching (SHA-256)
+async function hashForAdvancedMatching(value: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(value.toLowerCase().trim());
+  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, "0")).join("");
+}
+
+// Normalize phone number for Advanced Matching
+function normalizePhone(phone: string): string {
+  // Remove all non-numeric characters
+  const digits = phone.replace(/\D/g, "");
+  // Remove country code if present (52 for Mexico)
+  if (digits.startsWith("52") && digits.length > 10) {
+    return digits.slice(2);
+  }
+  return digits;
+}
+
+/**
+ * Set user data for Facebook Advanced Matching
+ * Call this when user provides their email/phone (e.g., in forms)
+ */
+export async function setFBAdvancedMatchingData(userData: {
+  email?: string;
+  phone?: string;
+  firstName?: string;
+  lastName?: string;
+}) {
+  if (typeof window === "undefined") return;
+
+  const matchingData: Record<string, string> = {};
+
+  if (userData.email) {
+    matchingData.em = await hashForAdvancedMatching(userData.email);
+  }
+  if (userData.phone) {
+    matchingData.ph = await hashForAdvancedMatching(normalizePhone(userData.phone));
+  }
+  if (userData.firstName) {
+    matchingData.fn = await hashForAdvancedMatching(userData.firstName);
+  }
+  if (userData.lastName) {
+    matchingData.ln = await hashForAdvancedMatching(userData.lastName);
+  }
+
+  // Store for persistence
+  localStorage.setItem("fb_user_data", JSON.stringify(matchingData));
+
+  // Update Facebook Pixel with user data if already initialized
+  if (window.fbq) {
+    window.fbq("init", FB_PIXEL_ID, matchingData);
+  }
+}
+
+/**
+ * Track event with Advanced Matching user data
+ */
+export async function trackFBEventWithUserData(
+  eventName: string, 
+  params?: Record<string, unknown>,
+  userData?: {
+    email?: string;
+    phone?: string;
+    firstName?: string;
+  }
+) {
+  if (typeof window === "undefined" || !window.fbq) return;
+
+  // If user data provided, set it for Advanced Matching
+  if (userData) {
+    await setFBAdvancedMatchingData(userData);
+  }
+
+  // Track the event
+  window.fbq("track", eventName, params);
 }
 

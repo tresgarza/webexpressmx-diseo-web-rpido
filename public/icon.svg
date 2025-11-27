@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+  <defs>
+    <linearGradient id="brandGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#6366F1"/>
+      <stop offset="100%" style="stop-color:#5B4CDB"/>
+    </linearGradient>
+  </defs>
+  <!-- Browser window -->
+  <rect x="64" y="96" width="280" height="220" rx="24" ry="24" fill="url(#brandGradient)"/>
+  <!-- Window dots -->
+  <circle cx="104" cy="136" r="12" fill="white"/>
+  <circle cx="144" cy="136" r="12" fill="white"/>
+  <circle cx="184" cy="136" r="12" fill="white"/>
+  <!-- Window content area (cutout effect) -->
+  <rect x="84" y="166" width="240" height="130" rx="8" ry="8" fill="white" fill-opacity="0.15"/>
+  <!-- Arrow -->
+  <path d="M280 256 L280 316 Q280 336 300 336 L380 336 L380 376 L440 316 L380 256 L380 296 L320 296 L320 256 Q320 236 300 236 L280 236 L280 256 Z" fill="url(#brandGradient)"/>
+</svg>
+
