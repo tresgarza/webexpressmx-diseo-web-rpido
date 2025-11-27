@@ -1,0 +1,27 @@
+{
+  "name": "SitioExpress - Páginas Web Profesionales",
+  "short_name": "SitioExpress",
+  "description": "Creamos sitios web profesionales que impulsan ventas. Tu página web lista en 7 días o menos.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#5B4CDB",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/logo-sitioexpress.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/logo-sitioexpress.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["business", "productivity"],
+  "lang": "es-MX"
+}
+
