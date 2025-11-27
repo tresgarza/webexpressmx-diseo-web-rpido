@@ -5,9 +5,9 @@ import Script from "next/script";
 
 const GA4_ID = process.env.NEXT_PUBLIC_GA4_ID || "G-QKL95SX2EX";
 // Google Ads Conversion ID - set via environment variable
-const GOOGLE_ADS_ID = process.env.NEXT_PUBLIC_GOOGLE_ADS_ID || "";
+const GOOGLE_ADS_ID = process.env.NEXT_PUBLIC_GOOGLE_ADS_ID || "AW-17762741871";
 // Google Ads Conversion Label for Lead events
-const GOOGLE_ADS_CONVERSION_LABEL = process.env.NEXT_PUBLIC_GOOGLE_ADS_CONVERSION_LABEL || "";
+const GOOGLE_ADS_CONVERSION_LABEL = process.env.NEXT_PUBLIC_GOOGLE_ADS_CONVERSION_LABEL || "kLFRCIyX28cbEO_c95VC";
 
 function getCookieConsent() {
   if (typeof window === "undefined") return null;
