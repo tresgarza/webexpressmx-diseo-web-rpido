@@ -144,3 +144,4 @@ Después del deploy, verifica que:
 - [Next.js en Vercel](https://vercel.com/docs/frameworks/nextjs)
 - [Variables de Entorno en Vercel](https://vercel.com/docs/projects/environment-variables)
 
+

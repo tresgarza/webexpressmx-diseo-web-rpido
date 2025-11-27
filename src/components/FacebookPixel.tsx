@@ -16,21 +16,16 @@ function getCookieConsent() {
   }
 }
 
-// Get stored user data for Advanced Matching
-function getStoredUserData(): { em?: string; ph?: string; fn?: string } | null {
-  if (typeof window === "undefined") return null;
-  try {
-    const stored = localStorage.getItem("fb_user_data");
-    return stored ? JSON.parse(stored) : null;
-  } catch {
-    return null;
-  }
-}
-
 // Extend window type for Facebook Pixel
 declare global {
   interface Window {
-    fbq: (...args: unknown[]) => void;
+    fbq: ((...args: unknown[]) => void) & {
+      callMethod?: (...args: unknown[]) => void;
+      queue?: unknown[];
+      loaded?: boolean;
+      version?: string;
+      push?: (...args: unknown[]) => void;
+    };
     _fbq: unknown;
   }
 }
@@ -39,6 +34,7 @@ function FacebookPixelContent() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [shouldLoad, setShouldLoad] = useState(false);
+  const [isInitialized, setIsInitialized] = useState(false);
 
   useEffect(() => {
     if (!FB_PIXEL_ID) return;
@@ -46,7 +42,7 @@ function FacebookPixelContent() {
     // Check cookie consent
     const checkConsent = () => {
       const consent = getCookieConsent();
-      // Load Facebook Pixel only if marketing cookies are accepted, or if no consent yet (default to true for initial load)
+      // Load Facebook Pixel only if marketing cookies are accepted, or if no consent yet
       if (!consent || consent.marketing) {
         setShouldLoad(true);
       }
@@ -59,37 +55,37 @@ function FacebookPixelContent() {
     return () => window.removeEventListener("cookieConsentUpdated", checkConsent);
   }, []);
 
+  // Track page views on route changes (after initial load)
   useEffect(() => {
-    if (!FB_PIXEL_ID || typeof window === "undefined" || !shouldLoad) return;
+    if (!FB_PIXEL_ID || typeof window === "undefined" || !isInitialized) return;
 
     // Track page view on route change
     if (window.fbq) {
       window.fbq("track", "PageView");
+      console.log("[FB Pixel] PageView tracked on route change:", pathname);
     }
-  }, [pathname, searchParams, shouldLoad]);
+  }, [pathname, searchParams, isInitialized]);
 
   if (!FB_PIXEL_ID || !shouldLoad) return null;
 
+  // Official Facebook Pixel base code
+  const fbPixelInitScript = [
+    "!function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');",
+    `fbq('init', '${FB_PIXEL_ID}');`,
+    "fbq('track', 'PageView');",
+    "console.log('[FB Pixel] Initialized and PageView tracked');",
+  ].join("\n");
+
   return (
     <>
+      {/* Facebook Pixel - use official snippet */}
       <Script
-        id="fb-pixel-script"
+        id="fb-pixel-init"
         strategy="afterInteractive"
-        dangerouslySetInnerHTML={{
-          __html: `
-            !function(f,b,e,v,n,t,s)
-            {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
-            n.callMethod.apply(n,arguments):n.queue.push(arguments)};
-            if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
-            n.queue=[];t=b.createElement(e);t.async=!0;
-            t.src=v;s=b.getElementsByTagName(e)[0];
-            s.parentNode.insertBefore(t,s)}(window, document,'script',
-            'https://connect.facebook.net/en_US/fbevents.js');
-            fbq('init', '${FB_PIXEL_ID}');
-            fbq('track', 'PageView');
-          `,
-        }}
+        dangerouslySetInnerHTML={{ __html: fbPixelInitScript }}
+        onLoad={() => setIsInitialized(true)}
       />
+      {/* Noscript fallback for users without JavaScript */}
       <noscript>
         <img
           height="1"

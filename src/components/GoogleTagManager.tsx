@@ -15,6 +15,13 @@ function getCookieConsent() {
   }
 }
 
+// Extend window type for dataLayer
+declare global {
+  interface Window {
+    dataLayer: Record<string, unknown>[];
+  }
+}
+
 export function GoogleTagManager() {
   const [shouldLoad, setShouldLoad] = useState(false);
 
@@ -24,7 +31,7 @@ export function GoogleTagManager() {
     // Check cookie consent
     const checkConsent = () => {
       const consent = getCookieConsent();
-      // Load GTM if analytics or marketing cookies are accepted, or if no consent yet (default to true for initial load)
+      // Load GTM if analytics or marketing cookies are accepted, or if no consent yet
       if (!consent || consent.analytics || consent.marketing) {
         setShouldLoad(true);
       }
@@ -39,23 +46,18 @@ export function GoogleTagManager() {
 
   if (!GTM_ID || !shouldLoad) return null;
 
+  // Official GTM snippet - initializes dataLayer and loads the script
+  const gtmInitScript = [
+    `(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src='https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);})(window,document,'script','dataLayer','${GTM_ID}');`,
+    `console.log('[GTM] Loaded: ${GTM_ID}');`,
+  ].join("\n");
+
   return (
-    <>
-      {/* Google Tag Manager - Head */}
-      <Script
-        id="gtm-script"
-        strategy="afterInteractive"
-        dangerouslySetInnerHTML={{
-          __html: `
-            (function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
-            new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
-            j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
-            'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
-            })(window,document,'script','dataLayer','${GTM_ID}');
-          `,
-        }}
-      />
-    </>
+    <Script
+      id="gtm-script"
+      strategy="afterInteractive"
+      dangerouslySetInnerHTML={{ __html: gtmInitScript }}
+    />
   );
 }
 
@@ -69,6 +71,7 @@ export function GoogleTagManagerNoscript() {
         height="0"
         width="0"
         style={{ display: "none", visibility: "hidden" }}
+        title="Google Tag Manager"
       />
     </noscript>
   );

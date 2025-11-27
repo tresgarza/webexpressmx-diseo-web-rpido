@@ -51,25 +51,32 @@ export function GoogleAnalytics() {
 
   if (!GA4_ID || !shouldLoad) return null;
 
-  // Build gtag config script with GA4 and optional Google Ads
-  const gtagConfig = `
-    window.dataLayer = window.dataLayer || [];
-    function gtag(){dataLayer.push(arguments);}
-    gtag('js', new Date());
-    gtag('config', '${GA4_ID}');
-    ${GOOGLE_ADS_ID ? `gtag('config', '${GOOGLE_ADS_ID}');` : ''}
-  `;
+  // Build the inline initialization script
+  // This MUST run BEFORE the gtag.js script loads
+  const initScript = [
+    "window.dataLayer = window.dataLayer || [];",
+    "function gtag(){dataLayer.push(arguments);}",
+    "gtag('js', new Date());",
+    `gtag('config', '${GA4_ID}');`,
+    GOOGLE_ADS_ID ? `gtag('config', '${GOOGLE_ADS_ID}');` : "",
+    `console.log('[GA4] Initialized: ${GA4_ID}');`,
+    GOOGLE_ADS_ID ? `console.log('[Google Ads] Initialized: ${GOOGLE_ADS_ID}');` : "",
+  ].filter(Boolean).join("\n");
 
   return (
     <>
+      {/* Initialize dataLayer and gtag BEFORE the script loads */}
       <Script
+        id="gtag-init"
+        strategy="afterInteractive"
+        dangerouslySetInnerHTML={{ __html: initScript }}
+      />
+      {/* Load the gtag.js script */}
+      <Script
+        id="gtag-script"
         src={`https://www.googletagmanager.com/gtag/js?id=${GA4_ID}`}
         strategy="afterInteractive"
-      />
-      <Script
-        id="ga4-script"
-        strategy="afterInteractive"
-        dangerouslySetInnerHTML={{ __html: gtagConfig }}
+        onError={(e) => console.error("[GA4] Failed to load:", e)}
       />
     </>
   );

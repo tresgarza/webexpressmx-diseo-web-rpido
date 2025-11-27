@@ -231,3 +231,4 @@ Para verificar que la deduplicación funciona correctamente:
 2. Verificar que CAPI y Pixel usan el mismo event_id
 3. Revisar configuración de deduplicación en Events Manager
 
+
