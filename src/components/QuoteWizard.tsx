@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useForm } from "react-hook-form";
+import { useRouter } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { toast } from "sonner";
@@ -202,13 +203,9 @@ function buildWhatsAppURL(data: {
 }
 
 export function QuoteWizard({ initialPlan, initialAddons }: QuoteWizardProps) {
+  const router = useRouter();
   const [step, setStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [showConfirmation, setShowConfirmation] = useState(false);
-  const [confirmationPhase, setConfirmationPhase] = useState<'loading' | 'success' | 'countdown'>('loading');
-  const [countdown, setCountdown] = useState(5);
-  const [whatsappUrl, setWhatsappUrl] = useState<string | null>(null);
-  const countdownRef = useRef<NodeJS.Timeout | null>(null);
 
   const [plans, setPlans] = useState<Plan[]>([]);
   const [addons, setAddons] = useState<Addon[]>([]);
@@ -607,9 +604,6 @@ export function QuoteWizard({ initialPlan, initialAddons }: QuoteWizardProps) {
 
   const onSubmit = async (contactData: ContactData) => {
     setIsSubmitting(true);
-    setShowConfirmation(true);
-    setConfirmationPhase('loading');
-    setCountdown(5);
 
     try {
       const addonsStr = selectedAddonObjs.map((a) => a.name).join(", ");
@@ -790,34 +784,26 @@ ${fullMessage}`;
       if (typeof window !== 'undefined') {
         localStorage.removeItem('quote_session_start_time');
         localStorage.removeItem('quote_step_times');
+        
+        // Store WhatsApp URL and plan name in sessionStorage for /gracias page
+        sessionStorage.setItem('pending_whatsapp_redirect', url);
+        sessionStorage.setItem('pending_plan_name', selectedPlanObj?.name || '');
       }
 
-      setWhatsappUrl(url);
+      // Show quick toast then redirect to /gracias
+      toast.success("¡Solicitud enviada!", {
+        description: "Redirigiendo...",
+        duration: 1500,
+      });
 
-      // Show success then countdown
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      setConfirmationPhase('success');
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      setConfirmationPhase('countdown');
+      // Small delay then redirect to /gracias page
+      await new Promise((resolve) => setTimeout(resolve, 500));
       
-      // Start countdown
-      let count = 5;
-      setCountdown(count);
-      countdownRef.current = setInterval(() => {
-        count -= 1;
-        setCountdown(count);
-        if (count <= 0) {
-          if (countdownRef.current) {
-            clearInterval(countdownRef.current);
-          }
-          window.open(url, "_blank");
-          handleCloseConfirmation();
-        }
-      }, 1000);
+      // Redirect to /gracias - this triggers Google Ads conversion tracking
+      router.push(`/gracias?plan=${encodeURIComponent(selectedPlanObj?.name || '')}`);
 
     } catch (error) {
       console.error("Error submitting form:", error);
-      setShowConfirmation(false);
       toast.error("Error al enviar", {
         description: "Por favor intenta de nuevo o contáctanos directamente por WhatsApp",
       });
@@ -826,179 +812,9 @@ ${fullMessage}`;
     }
   };
 
-  const handleGoToWhatsApp = () => {
-    if (countdownRef.current) {
-      clearInterval(countdownRef.current);
-    }
-    if (whatsappUrl) {
-      window.open(whatsappUrl, "_blank");
-    }
-    handleCloseConfirmation();
-  };
-
-  const handleCloseConfirmation = () => {
-    if (countdownRef.current) {
-      clearInterval(countdownRef.current);
-    }
-    setShowConfirmation(false);
-    setStep(1);
-    setValue("selectedPlan", "");
-    setValue("selectedAddons", []);
-    setValue("timeline", "");
-    setValue("phone", "");
-    setValue("name", "");
-    setValue("email", "");
-    setValue("message", "");
-    toast.success("¡Solicitud completada!", {
-      description: "Te contactaremos en menos de 2 horas",
-    });
-  };
-
-  const handleCancelCountdown = () => {
-    if (countdownRef.current) {
-      clearInterval(countdownRef.current);
-    }
-    setShowConfirmation(false);
-    toast.info("Puedes continuar editando tu solicitud");
-  };
 
   return (
     <>
-      <AnimatePresence>
-        {showConfirmation && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-          >
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-card border border-border rounded-2xl w-full max-w-md mx-auto shadow-2xl overflow-hidden"
-            >
-              {confirmationPhase === 'loading' && (
-                <div className="p-8 text-center">
-                  <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-primary/10 flex items-center justify-center">
-                    <motion.div
-                      animate={{ rotate: 360 }}
-                      transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                    >
-                      <Rocket className="w-8 h-8 text-primary" />
-                    </motion.div>
-                  </div>
-                  <h3 className="text-xl font-bold mb-2">Preparando tu solicitud...</h3>
-                  <p className="text-muted-foreground text-sm">Un momento por favor</p>
-                </div>
-              )}
-
-              {confirmationPhase === 'success' && (
-                <div className="p-8 text-center">
-                  <motion.div
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    transition={{ type: "spring", damping: 10 }}
-                    className="w-16 h-16 mx-auto mb-4 rounded-full bg-emerald-500/20 flex items-center justify-center"
-                  >
-                    <Check className="w-8 h-8 text-emerald-500" />
-                  </motion.div>
-                  <h3 className="text-xl font-bold mb-2">¡Solicitud completada!</h3>
-                  <p className="text-muted-foreground text-sm">Redirigiendo a WhatsApp...</p>
-                </div>
-              )}
-
-              {confirmationPhase === 'countdown' && (
-                <>
-                  {/* Header */}
-                  <div className="bg-emerald-500 p-4 text-white">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <Check className="w-5 h-5" />
-                        <span className="font-semibold">¡Solicitud Completada!</span>
-                      </div>
-                      <button 
-                        onClick={handleCancelCountdown}
-                        className="p-1 rounded-full hover:bg-white/20 transition-colors"
-                      >
-                        <X className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Summary */}
-                  <div className="p-4 space-y-3">
-                    {selectedPlanObj && (
-                      <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
-                        <Package className="w-5 h-5 text-primary" />
-                        <div>
-                          <p className="text-xs text-muted-foreground">Plan</p>
-                          <p className="font-medium">{selectedPlanObj.name}</p>
-                        </div>
-                      </div>
-                    )}
-                    
-                    {selectedTimelineOption && (
-                      <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
-                        <Clock className="w-5 h-5 text-primary" />
-                        <div>
-                          <p className="text-xs text-muted-foreground">Entrega</p>
-                          <p className="font-medium">{selectedTimelineOption.label} - {selectedTimelineOption.sublabel}</p>
-                        </div>
-                      </div>
-                    )}
-
-                    {selectedAddonObjs.length > 0 && (
-                      <div className="flex items-start gap-3 p-3 bg-muted/50 rounded-lg">
-                        <Sparkles className="w-5 h-5 text-primary mt-0.5" />
-                        <div>
-                          <p className="text-xs text-muted-foreground">Add-ons ({selectedAddonObjs.length})</p>
-                          <p className="font-medium text-sm">{selectedAddonObjs.map(a => a.name).join(', ')}</p>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Countdown */}
-                  <div className="px-4 pb-2">
-                    <div className="text-center py-3 bg-primary/5 rounded-xl border border-primary/20">
-                      <p className="text-sm text-muted-foreground mb-1">Redirigiendo a WhatsApp en</p>
-                      <motion.div
-                        key={countdown}
-                        initial={{ scale: 1.2, opacity: 0 }}
-                        animate={{ scale: 1, opacity: 1 }}
-                        className="text-4xl font-bold text-primary"
-                      >
-                        {countdown}
-                      </motion.div>
-                      <p className="text-xs text-muted-foreground mt-1">segundos</p>
-                    </div>
-                  </div>
-
-                  {/* Actions */}
-                  <div className="p-4 flex gap-3">
-                    <Button
-                      variant="outline"
-                      onClick={handleCancelCountdown}
-                      className="flex-1"
-                    >
-                      Cancelar
-                    </Button>
-                    <Button
-                      onClick={handleGoToWhatsApp}
-                      className="flex-1 bg-emerald-600 hover:bg-emerald-700"
-                    >
-                      <MessageSquare className="w-4 h-4 mr-2" />
-                      Ir ahora
-                    </Button>
-                  </div>
-                </>
-              )}
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
       <QuoteProgress currentStep={step} totalSteps={TOTAL_STEPS} />
 
       <div>
