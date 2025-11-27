@@ -344,6 +344,12 @@ export function trackThankYouPage(data?: {
       currency: "MXN",
     });
   }
+
+  // Google Ads Conversion - fires on /gracias page load
+  trackGoogleAdsConversion({
+    value: data?.totalValue || 1.0,
+    currency: "MXN",
+  });
 }
 
 // Track contact form submission (for non-quote leads)
