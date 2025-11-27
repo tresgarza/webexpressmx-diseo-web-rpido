@@ -56,44 +56,59 @@ function FacebookPixelContent() {
 
   // Initialize Facebook Pixel when consent is given
   useEffect(() => {
-    if (!shouldLoad || typeof window === "undefined" || isInitialized) return;
+    if (!shouldLoad || typeof window === "undefined" || typeof document === "undefined" || isInitialized) return;
 
-    // Initialize fbq stub
-    const initFbq = () => {
-      if (window.fbq) return; // Already initialized
-      
-      const fbq = function fbq(...args: unknown[]) {
-        if (fbq.callMethod) {
-          fbq.callMethod(...args);
-        } else {
-          fbq.queue?.push(args);
-        }
-      } as typeof window.fbq;
-      
-      fbq.push = fbq;
-      fbq.loaded = true;
-      fbq.version = "2.0";
-      fbq.queue = [];
-      
-      window.fbq = fbq;
-      window._fbq = fbq;
-    };
+    try {
+      // Initialize fbq stub
+      const initFbq = () => {
+        if (window.fbq) return; // Already initialized
+        
+        const fbq = function fbq(...args: unknown[]) {
+          if (fbq.callMethod) {
+            fbq.callMethod(...args);
+          } else {
+            fbq.queue?.push(args);
+          }
+        } as typeof window.fbq;
+        
+        fbq.push = fbq;
+        fbq.loaded = true;
+        fbq.version = "2.0";
+        fbq.queue = [];
+        
+        window.fbq = fbq;
+        window._fbq = fbq;
+      };
 
-    initFbq();
+      initFbq();
 
-    // Load the Facebook Pixel script
-    const script = document.createElement("script");
-    script.src = "https://connect.facebook.net/en_US/fbevents.js";
-    script.async = true;
-    script.onload = () => {
-      if (window.fbq) {
-        window.fbq("init", FB_PIXEL_ID);
-        window.fbq("track", "PageView");
+      // Check if FB Pixel script already exists
+      const existingScript = document.querySelector('script[src*="connect.facebook.net"]');
+      if (existingScript) {
         setIsInitialized(true);
-        console.log("[FB Pixel] Initialized and PageView tracked");
+        return;
       }
-    };
-    document.head.appendChild(script);
+
+      // Load the Facebook Pixel script
+      const script = document.createElement("script");
+      script.src = "https://connect.facebook.net/en_US/fbevents.js";
+      script.async = true;
+      script.onload = () => {
+        if (window.fbq) {
+          window.fbq("init", FB_PIXEL_ID);
+          window.fbq("track", "PageView");
+          setIsInitialized(true);
+          console.log("[FB Pixel] Initialized and PageView tracked");
+        }
+      };
+      
+      // Safely append to head
+      if (document.head) {
+        document.head.appendChild(script);
+      }
+    } catch (error) {
+      console.error("[FB Pixel] Failed to load:", error);
+    }
   }, [shouldLoad, isInitialized]);
 
   // Track page views on route changes (after initial load)

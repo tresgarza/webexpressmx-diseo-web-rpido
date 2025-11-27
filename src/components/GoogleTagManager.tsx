@@ -45,27 +45,35 @@ export function GoogleTagManager() {
 
   // Initialize GTM via useEffect for cleaner approach
   useEffect(() => {
-    if (!shouldLoad || !GTM_ID || typeof window === "undefined") return;
+    if (!shouldLoad || !GTM_ID || typeof window === "undefined" || typeof document === "undefined") return;
 
-    // Initialize dataLayer
-    window.dataLayer = window.dataLayer || [];
-    window.dataLayer.push({
-      "gtm.start": new Date().getTime(),
-      event: "gtm.js",
-    });
+    try {
+      // Initialize dataLayer
+      window.dataLayer = window.dataLayer || [];
+      window.dataLayer.push({
+        "gtm.start": new Date().getTime(),
+        event: "gtm.js",
+      });
 
-    // Check if GTM script already exists
-    const existingScript = document.querySelector(`script[src*="googletagmanager.com/gtm.js?id=${GTM_ID}"]`);
-    if (existingScript) return;
+      // Check if GTM script already exists
+      const existingScript = document.querySelector(`script[src*="googletagmanager.com/gtm.js?id=${GTM_ID}"]`);
+      if (existingScript) return;
 
-    // Load GTM script
-    const script = document.createElement("script");
-    script.src = `https://www.googletagmanager.com/gtm.js?id=${GTM_ID}`;
-    script.async = true;
-    script.onload = () => {
-      console.log("[GTM] Loaded:", GTM_ID);
-    };
-    document.head.appendChild(script);
+      // Load GTM script
+      const script = document.createElement("script");
+      script.src = `https://www.googletagmanager.com/gtm.js?id=${GTM_ID}`;
+      script.async = true;
+      script.onload = () => {
+        console.log("[GTM] Loaded:", GTM_ID);
+      };
+      
+      // Safely append to head
+      if (document.head) {
+        document.head.appendChild(script);
+      }
+    } catch (error) {
+      console.error("[GTM] Failed to load:", error);
+    }
   }, [shouldLoad]);
 
   return null;
