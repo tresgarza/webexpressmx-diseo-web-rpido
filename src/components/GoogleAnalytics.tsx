@@ -6,8 +6,10 @@ import Script from "next/script";
 const GA4_ID = process.env.NEXT_PUBLIC_GA4_ID || "G-QKL95SX2EX";
 // Google Ads Conversion ID - set via environment variable
 const GOOGLE_ADS_ID = process.env.NEXT_PUBLIC_GOOGLE_ADS_ID || "AW-17762741871";
-// Google Ads Conversion Label for Lead events
+// Google Ads Conversion Label for Lead events (form submission)
 const GOOGLE_ADS_CONVERSION_LABEL = process.env.NEXT_PUBLIC_GOOGLE_ADS_CONVERSION_LABEL || "kLFRCIyX28cbEO_c95VC";
+// Google Ads Conversion Label for Page View events (website traffic)
+const GOOGLE_ADS_PAGEVIEW_LABEL = process.env.NEXT_PUBLIC_GOOGLE_ADS_PAGEVIEW_LABEL || "Jx92CI7RhMgbEO_c95VC";
 
 function getCookieConsent() {
   if (typeof window === "undefined") return null;
@@ -71,6 +73,14 @@ export function GoogleAnalytics() {
       if (GOOGLE_ADS_ID) {
         window.gtag("config", GOOGLE_ADS_ID);
         console.log("[Google Ads] Initialized:", GOOGLE_ADS_ID);
+        
+        // Track page view conversion for website traffic goal
+        if (GOOGLE_ADS_PAGEVIEW_LABEL) {
+          window.gtag("event", "conversion", {
+            send_to: `${GOOGLE_ADS_ID}/${GOOGLE_ADS_PAGEVIEW_LABEL}`,
+          });
+          console.log("[Google Ads] Page View Conversion tracked");
+        }
       }
     }
   };
@@ -90,7 +100,19 @@ export function GoogleAnalytics() {
 export const googleAdsConfig = {
   id: GOOGLE_ADS_ID,
   conversionLabel: GOOGLE_ADS_CONVERSION_LABEL,
+  pageViewLabel: GOOGLE_ADS_PAGEVIEW_LABEL,
 };
+
+// Track page view conversion for website traffic campaigns
+export function trackGoogleAdsPageView() {
+  if (typeof window === "undefined" || !window.gtag || !GOOGLE_ADS_ID || !GOOGLE_ADS_PAGEVIEW_LABEL) {
+    return;
+  }
+
+  window.gtag("event", "conversion", {
+    send_to: `${GOOGLE_ADS_ID}/${GOOGLE_ADS_PAGEVIEW_LABEL}`,
+  });
+}
 
 // Helper function to track Google Ads conversions
 export function trackGoogleAdsConversion(data?: {
