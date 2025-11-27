@@ -1,6 +1,5 @@
 "use client";
 
-import Script from "next/script";
 import { useEffect, useState, Suspense } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 
@@ -55,6 +54,48 @@ function FacebookPixelContent() {
     return () => window.removeEventListener("cookieConsentUpdated", checkConsent);
   }, []);
 
+  // Initialize Facebook Pixel when consent is given
+  useEffect(() => {
+    if (!shouldLoad || typeof window === "undefined" || isInitialized) return;
+
+    // Initialize fbq stub
+    const initFbq = () => {
+      if (window.fbq) return; // Already initialized
+      
+      const fbq = function fbq(...args: unknown[]) {
+        if (fbq.callMethod) {
+          fbq.callMethod(...args);
+        } else {
+          fbq.queue?.push(args);
+        }
+      } as typeof window.fbq;
+      
+      fbq.push = fbq;
+      fbq.loaded = true;
+      fbq.version = "2.0";
+      fbq.queue = [];
+      
+      window.fbq = fbq;
+      window._fbq = fbq;
+    };
+
+    initFbq();
+
+    // Load the Facebook Pixel script
+    const script = document.createElement("script");
+    script.src = "https://connect.facebook.net/en_US/fbevents.js";
+    script.async = true;
+    script.onload = () => {
+      if (window.fbq) {
+        window.fbq("init", FB_PIXEL_ID);
+        window.fbq("track", "PageView");
+        setIsInitialized(true);
+        console.log("[FB Pixel] Initialized and PageView tracked");
+      }
+    };
+    document.head.appendChild(script);
+  }, [shouldLoad, isInitialized]);
+
   // Track page views on route changes (after initial load)
   useEffect(() => {
     if (!FB_PIXEL_ID || typeof window === "undefined" || !isInitialized) return;
@@ -68,34 +109,16 @@ function FacebookPixelContent() {
 
   if (!FB_PIXEL_ID || !shouldLoad) return null;
 
-  // Official Facebook Pixel base code
-  const fbPixelInitScript = [
-    "!function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');",
-    `fbq('init', '${FB_PIXEL_ID}');`,
-    "fbq('track', 'PageView');",
-    "console.log('[FB Pixel] Initialized and PageView tracked');",
-  ].join("\n");
-
   return (
-    <>
-      {/* Facebook Pixel - use official snippet */}
-      <Script
-        id="fb-pixel-init"
-        strategy="afterInteractive"
-        dangerouslySetInnerHTML={{ __html: fbPixelInitScript }}
-        onLoad={() => setIsInitialized(true)}
+    <noscript>
+      <img
+        height="1"
+        width="1"
+        style={{ display: "none" }}
+        src={`https://www.facebook.com/tr?id=${FB_PIXEL_ID}&ev=PageView&noscript=1`}
+        alt=""
       />
-      {/* Noscript fallback for users without JavaScript */}
-      <noscript>
-        <img
-          height="1"
-          width="1"
-          style={{ display: "none" }}
-          src={`https://www.facebook.com/tr?id=${FB_PIXEL_ID}&ev=PageView&noscript=1`}
-          alt=""
-        />
-      </noscript>
-    </>
+    </noscript>
   );
 }
 

@@ -49,36 +49,40 @@ export function GoogleAnalytics() {
     return () => window.removeEventListener("cookieConsentUpdated", checkConsent);
   }, []);
 
+  // Initialize dataLayer before script loads
+  useEffect(() => {
+    if (shouldLoad && typeof window !== "undefined") {
+      window.dataLayer = window.dataLayer || [];
+      window.gtag = function gtag() {
+        // eslint-disable-next-line prefer-rest-params
+        window.dataLayer.push(arguments);
+      };
+      window.gtag("js", new Date());
+    }
+  }, [shouldLoad]);
+
   if (!GA4_ID || !shouldLoad) return null;
 
-  // Build the inline initialization script
-  // This MUST run BEFORE the gtag.js script loads
-  const initScript = [
-    "window.dataLayer = window.dataLayer || [];",
-    "function gtag(){dataLayer.push(arguments);}",
-    "gtag('js', new Date());",
-    `gtag('config', '${GA4_ID}');`,
-    GOOGLE_ADS_ID ? `gtag('config', '${GOOGLE_ADS_ID}');` : "",
-    `console.log('[GA4] Initialized: ${GA4_ID}');`,
-    GOOGLE_ADS_ID ? `console.log('[Google Ads] Initialized: ${GOOGLE_ADS_ID}');` : "",
-  ].filter(Boolean).join("\n");
+  const handleGtagLoad = () => {
+    if (typeof window !== "undefined" && window.gtag) {
+      window.gtag("config", GA4_ID);
+      console.log("[GA4] Initialized:", GA4_ID);
+      
+      if (GOOGLE_ADS_ID) {
+        window.gtag("config", GOOGLE_ADS_ID);
+        console.log("[Google Ads] Initialized:", GOOGLE_ADS_ID);
+      }
+    }
+  };
 
   return (
-    <>
-      {/* Initialize dataLayer and gtag BEFORE the script loads */}
-      <Script
-        id="gtag-init"
-        strategy="afterInteractive"
-        dangerouslySetInnerHTML={{ __html: initScript }}
-      />
-      {/* Load the gtag.js script */}
-      <Script
-        id="gtag-script"
-        src={`https://www.googletagmanager.com/gtag/js?id=${GA4_ID}`}
-        strategy="afterInteractive"
-        onError={(e) => console.error("[GA4] Failed to load:", e)}
-      />
-    </>
+    <Script
+      id="gtag-script"
+      src={`https://www.googletagmanager.com/gtag/js?id=${GA4_ID}`}
+      strategy="afterInteractive"
+      onLoad={handleGtagLoad}
+      onError={(e) => console.error("[GA4] Failed to load:", e)}
+    />
   );
 }
 

@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Script from "next/script";
 
 const GTM_ID = process.env.NEXT_PUBLIC_GTM_ID || "GTM-KLPJG4Z2";
 
@@ -44,21 +43,32 @@ export function GoogleTagManager() {
     return () => window.removeEventListener("cookieConsentUpdated", checkConsent);
   }, []);
 
-  if (!GTM_ID || !shouldLoad) return null;
+  // Initialize GTM via useEffect for cleaner approach
+  useEffect(() => {
+    if (!shouldLoad || !GTM_ID || typeof window === "undefined") return;
 
-  // Official GTM snippet - initializes dataLayer and loads the script
-  const gtmInitScript = [
-    `(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src='https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);})(window,document,'script','dataLayer','${GTM_ID}');`,
-    `console.log('[GTM] Loaded: ${GTM_ID}');`,
-  ].join("\n");
+    // Initialize dataLayer
+    window.dataLayer = window.dataLayer || [];
+    window.dataLayer.push({
+      "gtm.start": new Date().getTime(),
+      event: "gtm.js",
+    });
 
-  return (
-    <Script
-      id="gtm-script"
-      strategy="afterInteractive"
-      dangerouslySetInnerHTML={{ __html: gtmInitScript }}
-    />
-  );
+    // Check if GTM script already exists
+    const existingScript = document.querySelector(`script[src*="googletagmanager.com/gtm.js?id=${GTM_ID}"]`);
+    if (existingScript) return;
+
+    // Load GTM script
+    const script = document.createElement("script");
+    script.src = `https://www.googletagmanager.com/gtm.js?id=${GTM_ID}`;
+    script.async = true;
+    script.onload = () => {
+      console.log("[GTM] Loaded:", GTM_ID);
+    };
+    document.head.appendChild(script);
+  }, [shouldLoad]);
+
+  return null;
 }
 
 export function GoogleTagManagerNoscript() {
