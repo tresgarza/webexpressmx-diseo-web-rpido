@@ -234,3 +234,4 @@ NEXT_PUBLIC_FACEBOOK_DOMAIN_VERIFICATION=xxxxxxxxxxxxx
 **Nota:** Este checklist debe revisarse cada vez que se hagan cambios significativos al tracking o se preparen nuevas campañas.
 
 
+

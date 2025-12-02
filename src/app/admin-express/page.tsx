@@ -99,6 +99,12 @@ const rushFeeSchema = z.object({
 
 type RushFeeFormData = z.infer<typeof rushFeeSchema>;
 
+// Authorized admin emails
+const AUTHORIZED_ADMINS = [
+  'diegogg98@hotmail.com',
+  'iantatters@hotmail.com',
+];
+
 export default function AdminExpressPage() {
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -145,7 +151,7 @@ export default function AdminExpressPage() {
 
   const checkAuth = async () => {
     const { data: { session } } = await supabase.auth.getSession();
-    if (session?.user?.email === 'diegogg98@hotmail.com') {
+    if (session?.user?.email && AUTHORIZED_ADMINS.includes(session.user.email)) {
       setUser(session.user);
     }
     setLoading(false);
@@ -157,30 +163,35 @@ export default function AdminExpressPage() {
 
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
-        email: email || 'diegogg98@hotmail.com',
+        email: email,
         password: password,
       });
 
       if (error) {
         if (error.message.includes('Invalid login credentials')) {
-          const { error: signUpError } = await supabase.auth.signUp({
-            email: email || 'diegogg98@hotmail.com',
-            password: password,
-          });
-          if (signUpError) {
-            toast.error(`Error: ${signUpError.message}`);
+          // Try to sign up if login fails and email is authorized
+          if (email && AUTHORIZED_ADMINS.includes(email)) {
+            const { error: signUpError } = await supabase.auth.signUp({
+              email: email,
+              password: password,
+            });
+            if (signUpError) {
+              toast.error(`Error: ${signUpError.message}`);
+            } else {
+              toast.success('Cuenta creada. Revisa tu email para confirmar.');
+            }
           } else {
-            toast.success('Cuenta creada. Intenta iniciar sesión nuevamente.');
+            toast.error('Credenciales inválidas');
           }
         } else {
           toast.error(`Error: ${error.message}`);
         }
-      } else if (data.user?.email === 'diegogg98@hotmail.com') {
+      } else if (data.user?.email && AUTHORIZED_ADMINS.includes(data.user.email)) {
         setUser(data.user);
         toast.success('Sesión iniciada');
       } else {
         await supabase.auth.signOut();
-        toast.error('Solo el email diegogg98@hotmail.com tiene acceso');
+        toast.error('Este email no tiene acceso al panel de administración');
       }
     } catch (err: any) {
       toast.error('Error inesperado');

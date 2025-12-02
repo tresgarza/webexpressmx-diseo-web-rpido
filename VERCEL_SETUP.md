@@ -145,3 +145,4 @@ Después del deploy, verifica que:
 - [Variables de Entorno en Vercel](https://vercel.com/docs/projects/environment-variables)
 
 
+
